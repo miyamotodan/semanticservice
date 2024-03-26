@@ -8,6 +8,6 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node --tls-min-v1.0 server.js"
+    "start": "node server.js"
   }
 }
