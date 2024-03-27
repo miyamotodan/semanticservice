@@ -150,13 +150,21 @@ const executeQuery = async (q, ep, c) => {
       while (next) {
         let qc = q + " LIMIT "+c+" OFFSET "+start;
         console.log(qc);
-        let bindingStream = await new Comunica.QueryEngine().queryBindings(qc, { sources: ep, forceHttpGet:true }); 
+        //let bindingStream = await new Comunica.QueryEngine().queryBindings(qc, { sources: ep, forceHttpGet:true }); 
+        let bindingStream = await new Comunica.QueryEngine().queryBindings(qc, { sources: ep }); 
         let r = await bindingStreamToTriples(bindingStream);
         result += r.triples;
         if (r.count==c) { result +="\n"; start += c; }
         else next = false; 
       }
     } else {
+
+      //++++ creazione di un motore con configurazione ad-hoc per provare ad usare "forceHttpGet" ma non si capisce come (https://github.com/comunica/comunica/discussions/1315)
+      //const QueryEngineFactory = require('@comunica/query-sparql').QueryEngineFactory;
+      //const myEngine = await new QueryEngineFactory().create({ configPath: 'config-default.json' });
+      //let bindingStream = await myEngine.queryBindings(q, { sources: ep });
+      //+++
+      
       let bindingStream = await new Comunica.QueryEngine().queryBindings(q, { sources: ep });
       result = (await bindingStreamToTriples(bindingStream)).triples;
     }
