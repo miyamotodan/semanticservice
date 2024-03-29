@@ -4,13 +4,53 @@ const eye = require('eyereasoner');
 const Comunica = require('@comunica/query-sparql');
 const N3 = require('n3');
 const fs = require('fs');
+const cors = require("cors");
 
 const app = express();
 const port = 3000;
 
 // Configurazione del middleware per il parsing del corpo della richiesta
-app.use(bodyParser.text({ type: 'text/plain', limit: '10mb' }));
-app.use(bodyParser.json({ type: 'application/json', limit: '10mb' }));
+app.use(bodyParser.text({ type: 'text/plain', limit: '100mb' }));
+app.use(bodyParser.json({ type: 'application/json', limit: '100mb' }));
+app.use(cors());
+
+const applyRules = async (data) => {
+  const chunks = [];
+  const Module = await eye.SwiplEye({
+    print: (x) => {
+      chunks.push(x);
+    },
+    arguments: ["-q"],
+  });
+  // Load the the strings data and query as files data.n3 and query.n3 into the module
+  Module.FS.writeFile("data.n3", data);
+  // Execute main(['--nope', '--quiet', './data.n3', '--query', './query.n3']).
+  eye.queryOnce(Module, "main", [
+    "--nope",
+    "--quiet",
+    "--pass-only-new",
+    "./data.n3",
+  ]);
+  return chunks.join("\n");
+};
+app.post('/reasoner2', async (req, res) => {
+  const n3Data = req.body.n3;
+
+  let ts = Date.now();
+  console.log(ts, ":", "START REASONING");
+  let inferred = await applyRules(n3Data);
+  console.log(ts, ":", "END REASONING : ", Math.abs(Math.floor((ts - Date.now()) / 1000)), " sec. ",inferred.length, " bytes");
+
+  let inferredQuads = [];
+  const parser = new N3.Parser();
+  parser.parse(inferred, (error, quad, prefixes) => {
+    if (quad)
+      inferredQuads.push(quad);
+    else
+      res.send(inferredQuads);
+  });
+});
+
 
 // Definizione dell'endpoint per il ragionamento
 // Accetta un file .n3 con dati e regole, ritorna un file .n3 con le triple inferite
@@ -30,6 +70,7 @@ app.post('/reasoner', (req, res) => {
     .then((inferred) => {
       console.log(ts, ":", "END REASONING : ", Math.abs(Math.floor((ts - Date.now()) / 1000)), " sec. ",inferred.length, " bytes");
       // Invio delle triple inferite come risposta
+      //console.log(inferred);
       res.send(inferred);
     })
     .catch(error => {
