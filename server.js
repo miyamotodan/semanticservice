@@ -41,6 +41,8 @@ app.post('/reasoner2', async (req, res) => {
   let inferred = await applyRules(n3Data);
   console.log(ts, ":", "END REASONING : ", Math.abs(Math.floor((ts - Date.now()) / 1000)), " sec. ",inferred.length, " bytes");
 
+  //console.log("inferred",inferred);
+
   let inferredQuads = [];
   const parser = new N3.Parser();
   parser.parse(inferred, (error, quad, prefixes) => {
@@ -88,7 +90,7 @@ app.post('/sparql', (req, res) => {
   let ts = Date.now();
   console.log(ts, ":", "START QUERYING");
   
-  console.log(body);
+  //console.log(body);
 
   executeQuery(body.query,body.sources,body.cunk)
   .then((result) => {
