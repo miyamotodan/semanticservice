@@ -15,7 +15,7 @@ app.use(cors());
 
 // Avvio del server
 app.listen(port, () => {
-  console.log(`Semantic Server listening at http://localhost:${port}`);
+  console.log(`Semantic Server wk listening at http://localhost:${port}`);
 });
 
 

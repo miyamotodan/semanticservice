@@ -1,8 +1,8 @@
 {
   "name": "semanticservice",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "servizio sementico per eye e comunica",
-  "main": "server.js",
+  "main": "server-wk.js",
   "dependencies": {
     "@comunica/query-sparql": "^3.0.1",
     "body-parser": "^1.20.2",
@@ -13,7 +13,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server-wk.js"
   },
   "repository": {
     "type": "git",
