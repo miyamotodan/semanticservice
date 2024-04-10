@@ -51,7 +51,7 @@ const wt = require("worker_threads");
               console.log('ERROR : bindingStreamToTriples'); 
               reject(e) 
             })
-            .on('end', () => {  console.log("nn", nn); resolve({count:nn, triples:n3triples}); } )
+            .on('end', () => {  console.log("nn", nn); resolve({nn:nn, n3triples:n3triples}); } );
     })
   }
   
@@ -73,7 +73,7 @@ const wt = require("worker_threads");
             .on('end', () => {  
               console.log("nn", nn); 
               writer.end((error, n3triples) => {
-                resolve(n3triples);
+                resolve({nn:nn, n3triples:n3triples});
               });
             } )
     })
@@ -94,7 +94,7 @@ const wt = require("worker_threads");
           //let bindingStream = await new Comunica.QueryEngine().queryBindings(qc, { sources: ep, forceHttpGet:true }); 
           let bindingStream = await new Comunica.QueryEngine().queryBindings(qc, { sources: ep }); 
           let r = await bindingStreamToTriples(bindingStream);
-          result += r.triples;
+          result += r.n3triples;
           if (r.count==c) { result +="\n"; start += c; }
           else next = false; 
         }
@@ -107,17 +107,17 @@ const wt = require("worker_threads");
         //+++
         
         let bindingStream = await new Comunica.QueryEngine().queryBindings(q, { sources: ep });
-        result = (await bindingStreamToTriples(bindingStream)).triples;
+        result = (await bindingStreamToTriples(bindingStream)).n3triples;
       }
     } else if (q.toLowerCase().indexOf("construct")!=-1) { //TODO:si può fare la gestione a blocchi per CONSTRUCT? verificare
       console.log("--CONSTRUCT--");
         
       let quadStream = await new Comunica.QueryEngine().queryQuads(q, { sources: ep });
-      result = await quadStreamToTriples(quadStream);
+      result = (await quadStreamToTriples(quadStream)).n3triples;
     } else {
       console.log("query sparql non riconosciuta (SELECT / CONSTRUCT)");
     }
-    console.log("result length:",result.length);
+    console.log("result:",result);
     return result;
   }
 
