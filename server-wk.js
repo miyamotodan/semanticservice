@@ -132,3 +132,43 @@ app.post('/reasoner', (req, res) => {
     });
 
 });
+
+
+// Definizione dell'endpoint per il ragionamento custom
+// Accetta un file .n3 con dati e regole, ritorna un file .n3 con le triple inferite
+// TODO: per avere più tipi di custom bisogna passare un parametro per distinguerli
+app.post('/custom', (req, res) => {
+  // Salvataggio del contenuto del file N3 inviato nella richiesta
+  const n3Data = req.body.n3;
+  //fs.writeFileSync('./data_0.n3', n3Data);
+  
+  let ts = Date.now();
+  console.log(ts, ":", "START REASONING");
+
+  const worker = new Worker("./eye-wk.js", {workerData: {mode:3, data:n3Data}} );
+
+  worker.once("message", inferred => {
+    console.log(ts, ":", "END REASONING : ", Math.abs(Math.floor((ts - Date.now()) / 1000)), " sec. ", inferred.length ," bytes");
+    // Invio delle triple interrogate come risposta
+    
+    let inferredQuads = [];
+    const parser = new N3.Parser();
+    parser.parse(inferred, (error, quad, prefixes) => {
+      if (quad)
+        inferredQuads.push(quad);
+      else
+        res.send(inferredQuads);
+    });
+
+  });
+
+  worker.on("error", error => {
+    console.error("Errore nell'inferenza:", error);
+    res.status(500).send("Errore nel'inferenza");
+  });
+
+  worker.on("exit", exitCode => {
+      console.log(`reasoner worker exited with code ${exitCode}`);
+  });
+
+});
