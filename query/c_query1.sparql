@@ -1,0 +1,4 @@
+SELECT ?c (count(*) as ?t)
+    WHERE  {    
+        ?I a ?c
+    } group by (?c)

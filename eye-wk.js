@@ -48,12 +48,9 @@ const applyRules2 = async (data) => {
     let tot = await storeLoad(store,data);
 
     //faccio una query sparql sullo store caricato
-    let q = `
-    SELECT ?c (count(*) as ?t)
-    WHERE  {    
-        ?I a ?c
-    } group by (?c)
-    `;
+    let q = fs.readFileSync("./query/c_query1.sparql").toString();
+    console.log("QUERY:",q);
+    
     let rs = await executeStoreQuery(q,store);
     rs = getResultSet(rs.bindings);
     //console.log(rs);
@@ -67,40 +64,15 @@ const applyRules2 = async (data) => {
 
     //aggiungo le triple inferite allo store
     tot += await storeLoad(store,inferred);
-    
-    let rule = `
-      @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-      @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-      @prefix log: <http://www.w3.org/2000/10/swap/log#> .
-      @prefix v: <http://view/> .
-      @prefix attr: <http://view/dot/attribute/> .
-      { 
-        v:digraph v:hasNode [
-          attr:shape "circle" ;
-          v:term ?t
-        ] . 
-        ?t log:namespace ?ns .
-        ?nsu log:uri ?ns .
-        (?ns) log:skolem ?siri . 
-      } => { 
-        v:digraph v:hasNode ?siri . 
-        ?siri attr:shape "gr-diam" .
-        ?siri v:term ?nsu .
-        v:digraph v:hasEdge [ 
-          attr:label "type";
-          attr:tooltip "type";
-          attr:labelURL rdf:type;
-          v:source ?t ;
-          v:target ?nsu         
-        ] . 
-      } .
-    `;
 
+    let rule = fs.readFileSync("./rules/c_rule1.n3").toString();
+    console.log("RULE:",rule);
+    
     let inferred2 = await applyRules(data + inferred + rule);
     inferred += inferred2;
 
-    fs.writeFileSync('./inferred.n3', inferred);
-    
+    fs.writeFileSync('./log/inferred.n3', inferred);
+  
     return inferred;
 
   }

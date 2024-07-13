@@ -1,0 +1,28 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+      @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+      @prefix log: <http://www.w3.org/2000/10/swap/log#> .
+      @prefix v: <http://view/> .
+      @prefix attr: <http://view/dot/attribute/> .
+      { 
+        v:digraph v:hasNode [
+          attr:shape "circle" ;
+          v:term ?t
+        ] . 
+        ?t log:namespace ?ns .
+        ?nsu log:uri ?ns .
+        (?ns) log:skolem ?siri . 
+      } => { 
+        v:digraph v:hasNode ?siri . 
+        ?siri attr:shape "gr-diam" ;
+        v:term ?nsu ;
+        attr:labelURL ?nsu;
+        attr:label ?nsu.
+        
+        v:digraph v:hasEdge [ 
+          attr:label "isDefinedBy";
+          attr:tooltip "rdfs:isDefinedBy";
+          attr:labelURL rdfs:isDefinedBy;
+          v:source ?t ;
+          v:target ?nsu         
+        ] . 
+      } .

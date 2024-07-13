@@ -117,7 +117,7 @@ const wt = require("worker_threads");
     } else {
       console.log("query sparql non riconosciuta (SELECT / CONSTRUCT)");
     }
-    console.log("result:",result);
+    //console.log("result:",result);
     return result;
   }
 
