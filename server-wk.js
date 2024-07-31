@@ -27,7 +27,7 @@ app.post('/sparql', (req, res) => {
   let ts = Date.now();
   console.log(ts, ":", "START QUERYING");
   
-  console.log(body);
+  //console.log(body);
 
   const worker = new Worker("./comunica-wk.js", {workerData: {query:body.query, sources:body.sources, chunk:body.chunk}} );
 

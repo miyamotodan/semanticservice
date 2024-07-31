@@ -1,0 +1,188 @@
+@prefix string: <http://www.w3.org/2000/10/swap/string#> .
+@prefix log: <http://www.w3.org/2000/10/swap/log#> .
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+@prefix math: <http://www.w3.org/2000/10/swap/math#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix v: <http://view/> .
+@prefix attr: <http://view/dot/attribute/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix swrl: <http://www.w3.org/2003/11/swrl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rule: <http://localhost:8080/onto_rule#> .
+@prefix mapp: <http://localhost:8080/onto_mapp#> . 
+@prefix sql: <http://localhost:8080/sql#> .
+@prefix loc: <http://local/> .
+
+##
+## analizza le regole e gli appendo dei dati ricavati dal mapping
+##
+
+##detrmino il punto di partenza
+{
+    ?a rule:hasTerm ?t .
+	?t rule:termOrder "1" .
+    ?t rule:ClassInstance ?cl .
+    ?cl mapp:Classexpression_map_with_Table ?t1 .
+    ?t1 log:localName ?t1l .
+    ?pk mapp:Primarykey_belongs_to_Table ?t1 .
+    ?pk mapp:Primarykey_Sequence ?pkf . #pk composta da 1 campo... se fosse composta da più campi si dovrebbe usare una modalità diversa dal solo separatore "|"
+    
+    ?t rule:hasVariable ?v . 
+    ?v log:localName ?vl .
+    ?pkf log:localName ?pkfln .
+    
+    #composizione query
+    ( ?t1l "|" ?pkfln) string:concatenation ?sql .
+    ( ?vl ) string:concatenation ?var .
+    
+
+} => {
+    #lego la stringa alla regola
+    ?t rule:hasChunk ?sql .
+    ?t rule:hasVarChunk ?var .
+}
+.
+
+#ObjectPropertyInstance
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r rule:hasAssumption ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:ObjectPropertyInstance ?op .
+    ?r log:localName ?iname .
+
+    #recupero metadati mapping
+    ?op mapp:Objectproperty_map_with_Foreignkey ?fk .
+    ?fk mapp:Foreignkey_composed_by_Tablecolumn ?fkc .
+    ?fk mapp:Foreignkey_belongs_to_Table ?tb1 .
+    ?fk mapp:Foreignkey_references_Primarykey ?pk .
+    ?pk mapp:Primarykey_belongs_to_Table ?tb2 .
+    ?pk mapp:Primarykey_Sequence ?pkc.
+
+    #preparazione query
+    ?tb1 log:localName ?tb1ln .
+    ?tb2 log:localName ?tb2ln .
+    ?fkc log:localName ?fkcln .
+    ?pkc log:localName ?pkcln .
+
+    ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
+    ?list list:first ?v1 .
+    ?list list:last ?v2 .
+    ?v1 log:localName ?v1l .
+    ?v2 log:localName ?v2l .
+
+    #composizione query
+    ( ?tb1ln "|" ?tb2ln "|" ?fkcln "|" ?pkcln ) string:concatenation ?sql .
+    ( ?v1l "|" ?v2l ) string:concatenation ?var .
+
+
+} => {
+
+    #lego la stringa alla regola
+    ?t rule:hasChunk ?sql .
+    ?t rule:hasVarChunk ?var .
+
+}.
+
+#DataPropertyEqualsTo
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r ?p ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:DataPropertyEqualsTo ?dp .
+    ?r log:localName ?iname .
+
+    #recupero metadati mapping
+    ?dp mapp:Dataproperty_map_with_Tablecolumn ?dpc .
+
+    #preparazione query
+    ?dpc log:localName ?dpcln .
+
+    (
+       { ?t rule:hasConstant ?c . }
+       { #THEN   
+        ?c rule:hasValue ?cv .
+        ( ?vv ?vt ) log:dtlit ?cv .
+        ?t rule:hasVariable ?v .
+        ?v log:localName ?vln .
+
+        #composizione query
+        ( ?dpcln ) string:concatenation ?sql .
+        ( ?vln "|" ?vv ) string:concatenation ?var .
+
+       }
+       { #ELSE 
+        ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
+        ?list list:first ?v1 .
+        ?list list:last ?v2 .
+        ?v1 log:localName ?v1l .
+        ?v2 log:localName ?v2l .
+
+        #composizione query
+        ( ?dpcln ) string:concatenation ?sql .
+        ( ?v1l "|" ?v2l ) string:concatenation ?var .
+
+       }
+    ) log:ifThenElseIn ?SCOPE .
+
+    (
+       { ?r rule:hasAssumption ?a. }
+       { #THEN   
+         ( "true" ) string:concatenation ?b .
+       }
+       { #ELSE 
+         ( "false" ) string:concatenation ?b .
+       }
+    ) log:ifThenElseIn ?SCOPE1 .
+
+
+} => {
+
+   #lego la stringa alla regola
+   ?t rule:hasChunk ?sql .
+   ?t rule:hasVarChunk ?var .
+   ?t rule:isInAssumption ?b .
+}.
+
+#DataPropertySum
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r ?p ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:DataPropertySum ?dp .
+    #devo prendere la seconda varaibile
+    ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
+    ?list list:last ?vl .
+    ?r log:localName ?iname .
+
+    #recupero metadati mapping
+    ?dp mapp:Dataproperty_map_with_Tablecolumn ?dpc .
+    ?ce mapp:Classexpression_domain_of_Dataproperty ?dp . 
+    ?ce mapp:Classexpression_map_with_Table ?tb .
+
+    #preparazione query
+    ?dpc log:localName ?dpcln .
+    ?tb log:localName ?tbln .
+    ?vl log:localName ?vln .
+
+    #(sql:select ?r) log:skolem ?siri .
+    #(sql:select ?r ?dp) log:skolem ?tiri .
+
+    #composizione query
+    ("[SUM(" ?dpcln ")][" ?tbln "][" ?vln "]") string:concatenation ?sql .
+
+
+} => {
+
+    #lego la stringa alla regola
+    ?t rule:hasChunk ?sql .
+
+}.
+

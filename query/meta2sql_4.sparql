@@ -1,0 +1,20 @@
+
+prefix attr: <http://view/dot/attribute/> 
+prefix rule: <http://localhost:8080/onto_rule#> 
+prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+#elenco i chunk che ho legato alle regole in fase di inferenza
+SELECT ?r ?o ?c ?l ?v ?b WHERE {
+
+  ?r a rule:Rule .
+  ?r ?p ?a .
+  ?a rule:hasTerm ?t .
+  ?t rdfs:label ?l .
+  ?t rule:hasChunk ?c .
+  ?t rule:termOrder ?o .
+  OPTIONAL {?t rule:isInAssumption ?b } 
+  OPTIONAL { ?t rule:hasVarChunk ?v }
+
+  #FILTER (?r = <http://localhost:8080/onto_rule#BR_rule_3>)
+
+} order by ASC (?r) ASC (?o) 
