@@ -157,9 +157,10 @@
     ?r ?p ?a .
     ?a rule:hasTerm ?t .
     ?t rule:DataPropertySum ?dp .
-    #devo prendere la seconda varaibile
+    #prendo le variabili
     ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
-    ?list list:last ?vl .
+    ?list list:first ?v1 .
+    ?list list:last ?v2 .
     ?r log:localName ?iname .
 
     #recupero metadati mapping
@@ -170,19 +171,132 @@
     #preparazione query
     ?dpc log:localName ?dpcln .
     ?tb log:localName ?tbln .
-    ?vl log:localName ?vln .
-
-    #(sql:select ?r) log:skolem ?siri .
-    #(sql:select ?r ?dp) log:skolem ?tiri .
+    ?v1 log:localName ?v1l .
+    ?v2 log:localName ?v2l .
 
     #composizione query
-    ("[SUM(" ?dpcln ")][" ?tbln "][" ?vln "]") string:concatenation ?sql .
-
+    ( ?dpcln ) string:concatenation ?sql .
+    ( ?v1l "|" ?v2l ) string:concatenation ?var .
 
 } => {
 
     #lego la stringa alla regola
     ?t rule:hasChunk ?sql .
+    ?t rule:hasVarChunk ?var .
+}.
+
+#DataPropertyListAllNotIn
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r ?p ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:DataPropertyListAllNotIn ?dp .
+    ?r log:localName ?iname .
+    
+    #recupero metadati mapping
+    ?dp mapp:Dataproperty_map_with_Tablecolumn ?dpc .
+
+    #preparazione query
+    ?dpc log:localName ?dpcln .
+
+   (
+      { ?t rule:hasConstant ?c . }
+      { #THEN   
+       ?c rule:hasValue ?cv .
+       ( ?vv ?vt ) log:dtlit ?cv .
+       ?t rule:hasVariable ?v .
+       ?v log:localName ?vln .
+       #composizione query
+       ( ?dpcln ) string:concatenation ?sql .
+       ( ?vln "|" ?vv ) string:concatenation ?var .
+      }
+      { #ELSE 
+       ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
+       ?list list:first ?v1 .
+       ?list list:last ?v2 .
+       ?v1 log:localName ?v1l .
+       ?v2 log:localName ?v2l .
+       #composizione query
+       ( ?dpcln ) string:concatenation ?sql .
+       ( ?v1l "|" ?v2l ) string:concatenation ?var .
+      }
+   ) log:ifThenElseIn ?SCOPE .
+    
+    (
+       { ?r rule:hasAssumption ?a. }
+       { #THEN   
+         ( "true" ) string:concatenation ?b .
+       }
+       { #ELSE 
+         ( "false" ) string:concatenation ?b .
+       }
+    ) log:ifThenElseIn ?SCOPE1 .
+
+} => {
+
+    #lego la stringa alla regola
+    ?t rule:hasChunk ?sql .
+    ?t rule:hasVarChunk ?var .
+    ?t rule:isInAssumption ?b .
 
 }.
 
+#DataPropertyListSomeIn
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r ?p ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:DataPropertyListSomeIn ?dp .
+    ?r log:localName ?iname .
+    
+    #recupero metadati mapping
+    ?dp mapp:Dataproperty_map_with_Tablecolumn ?dpc .
+
+    #preparazione query
+    ?dpc log:localName ?dpcln .
+
+   (
+      { ?t rule:hasConstant ?c . }
+      { #THEN   
+       ?c rule:hasValue ?cv .
+       ( ?vv ?vt ) log:dtlit ?cv .
+       ?t rule:hasVariable ?v .
+       ?v log:localName ?vln .
+       #composizione query
+       ( ?dpcln ) string:concatenation ?sql .
+       ( ?vln "|" ?vv ) string:concatenation ?var .
+      }
+      { #ELSE 
+       ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
+       ?list list:first ?v1 .
+       ?list list:last ?v2 .
+       ?v1 log:localName ?v1l .
+       ?v2 log:localName ?v2l .
+       #composizione query
+       ( ?dpcln ) string:concatenation ?sql .
+       ( ?v1l "|" ?v2l ) string:concatenation ?var .
+      }
+   ) log:ifThenElseIn ?SCOPE .
+    
+    (
+       { ?r rule:hasAssumption ?a. }
+       { #THEN   
+         ( "true" ) string:concatenation ?b .
+       }
+       { #ELSE 
+         ( "false" ) string:concatenation ?b .
+       }
+    ) log:ifThenElseIn ?SCOPE1 .
+    
+} => {
+
+    #lego la stringa alla regola
+    ?t rule:hasChunk ?sql .
+    ?t rule:hasVarChunk ?var .
+    ?t rule:isInAssumption ?b .
+
+}.

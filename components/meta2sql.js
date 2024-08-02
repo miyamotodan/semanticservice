@@ -51,7 +51,14 @@ const assignMapping = (data, vars, mapping) => {
       return
   }
 
-//classe che espone un metodo di ragionamento customdedicato alla costruzione di query SQL a partire da metadati 
+//classe che espone un metodo di ragionamento custom dedicato alla costruzione di query SQL a partire da metadati
+// - esamina le relazioni tra le entità e
+//    + capisce la drezione delle relazioni (per mettere correttamente nella query PK e FK)
+//    + crea un albero delle relazioni e lo esplora con una BFS in modo da fare crretamente le JOIN
+// - "capisce" se deve o meno fare una group by (se ci sono aggregazioni)
+// - applica le WHERE o le HAVING per le condizioni sulle proprietà 
+// - "capisce" se deve fare una subquery
+//
 class Meta2SQL {
 
     applyRulesCustom = async (data) => {
@@ -81,11 +88,16 @@ class Meta2SQL {
        
         //per ogni regola
         lh.each(gr, (v,k) => {
-          console.log("processing:",k);
+          //console.log("processing:",k);
           let tree = new Graph(); //albero per ordinare le join
           let mapping = new Map(); //mappa le variabili con le tabelle del DB nelle Join
           let nv = 0; //numero vertici dell'albero
-          let mainTable = "";
+          let mainTable = {};
+          let fields2gb = []; //indica in campi su cui fare il group by: tutti quelli non aggegati
+          let gb = false;     //indica che bisogna fare il group by
+          let mq = false;     //indica che bisogna fare una main-query e una sub query
+          let sqd = [];        //vettore che prepara la costruzione di parte della sub-query (che può essere l'unica query) perché alcune decisioni su come farla devono essere prese a valle della raccolta di tutti i dati
+          let mqd = [];        //vettore che prepara la costruzione della eventuale query principale che contiene la sub-quer
           nq++;
           lh.each(v, (e,i) => {
             let ct = e.l.substring(0,e.l.indexOf("("));
@@ -93,28 +105,54 @@ class Meta2SQL {
               nv = 0;
               let data = e.c.split("|");
               vq[nq]=squel.select().from(data[0]).field(data[1]); //proietto la PK
-              mainTable=data[0];
-              mapping.set(e.v, data[0]); //mappa la variabile principale (ordine 1)
-              tree.addVertex(data[0],data); nv++;
+              fields2gb.push(data[1]);
+              mainTable={table:data[0],pk:data[1].substring(data[1].lastIndexOf('.')+1,100)}; //salvo la PK con il solo nome del campo in prospettiva della subquery eventuale
+              mapping.set(e.v, data[0]); //mappa la variabile principale per le join (ordine 1)
+              tree.addVertex(data[0],data); nv++; //aggiunge il nodo della tabella all'albero delle join
             } else {
               //console.log("ct:",ct );
               if (ct=="ObjectPropertyInstance") { //costruisce le join
                 let vars = e.v.split("|");
                 let data = e.c.split("|");
-                assignMapping(data,vars,mapping);
-                tree.addVertex(data[1],data); nv++;
+                assignMapping(data,vars,mapping);   //mappa le variabili
+                tree.addVertex(data[1],data); nv++; //aggiunge il nodo della tabella all'albero delle join
                 tree.addEdge(data[0],data[1],true); //arco orientato
                 //console.log(data);
               } else
               if (ct=="DataPropertyEqualsTo") {
                   let vars = e.v.split("|");
                   let data = e.c.split("|"); 
-                  vq[nq].field(data[0]);
-                  if (e.b=="true") vq[nq].where(data[0]+" = '"+vars[1]+"'");
-                  else vq[nq].where(data[0]+" <> '"+vars[1]+"'");
+                  vq[nq].field(data[0]);   //metto il campo in proiezione
+                  fields2gb.push(data[0]); //lo segno tra quelli che possono andare in GROUP BY
+                  sqd.push([e.b, data[0], vars[1]]); //conservo i dati per la scrittura di WHERE/HAVING
               } else
               if (ct=="DataPropertySum") {
-      
+                  gb = true;
+                  let vars = e.v.split("|");
+                  let data = e.c.split("|"); 
+                  vq[nq].field("SUM(" + data[0] + ")",vars[1]); //metto il campo in proiezione come SUM
+              } else
+              if (ct=="DataPropertyListSomeIn") {
+                  let vars = e.v.split("|");
+                  let data = e.c.split("|");
+                  vq[nq].field(data[0], data[0].replaceAll('.',''));    //metto il campo in proiezione
+                  mq = true;                                            //si deve fare una query annidata
+                  let el = vars.slice(1).map((e) => "'"+e+"'").join(",");
+                  
+                  //TODO: bisogna prevedere che mqd sia un vettore di vettori perché altrimenti non si possono mettere più HAVING nella main-query 
+              } else
+              if (ct=="DataPropertyListAllNotIn") {
+                  let vars = e.v.split("|");
+                  let data = e.c.split("|");
+                  vq[nq].field(data[0], data[0].replaceAll('.',''));    //metto il campo in proiezione
+                  mq = true;                                            //si deve fare una query annidata
+                  let el = vars.slice(1).map((e) => "'"+e+"'").join(",");
+                  
+                  //TODO: bisogna prevedere che mqd sia un vettore di vettori perché altrimenti non si possono mettere più HAVING nella main-query
+                  mqd.push([e.b, data[0].replaceAll('.',''), el]); //conservo i dati per la scrittura delle condizioni HAVING sulla quey annidata
+              } else
+              if (ct=="ClassInstance") {
+                //non deve fare nulla
               } else {
                 console.log("*costrutto non riconosciuto*",ct);
               }
@@ -124,7 +162,7 @@ class Meta2SQL {
 
           //console.log(tree);
           //faccio una visita in ampiezza dell'albero generato delle ObjectPropertyInstance
-          let bfs = tree.bfs(mainTable); 
+          let bfs = tree.bfs(mainTable.table); 
           //console.log("BFS",bfs);
           
           //per ogni nodo (tranne la radice) inserisco una join
@@ -134,10 +172,38 @@ class Meta2SQL {
             if (data[1] && data[2] && data[3]) vq[nq].join("" + data[1], null ,data[2] + " = " + data[3]);
           });
 
+          console.log("*sqd*",sqd);
+
+          //qui devo capire quando fare una WHERE e quando una HAVING
+          sqd.forEach((e,i) => {
+            //console.log("("+i+") ",e);
+            if (!e[2].startsWith("BR_var")) e[2]="'"+e[2]+"'"; //se è una variabile o un valore
+            if (gb)
+              if (fields2gb.includes(e[1]))
+                if (e[0]=="true") vq[nq].having(e[1]+" = "+e[2]);
+                else vq[nq].having(e[1]+" <> "+e[2]);
+              else {}  
+            else   
+              if (e[0]=="true") vq[nq].where(e[1]+" = "+e[2]);
+              else vq[nq].where(e[1]+" <> "+e[2]);
+          });
+          
+          //group by su tutti i campi proiettati tranne quelli aggregato
+          if (gb) vq[nq].group(fields2gb.join(','));
+
+          console.log("*mqd*",mqd);
+
+          //query annidata (1 livello...)
+          if (mq) 
+            mqd.forEach((e,i) => {
+              vq[nq] = squel.select().from(vq[nq]).field(mainTable.pk);
+              vq[nq].group(mainTable.pk);
+              vq[nq].having("SUM(CASE WHEN "+e[1]+" IN ("+e[2]+") THEN 1 END) > 0");
+            });
         })
 
         //stampo le query
-        vq.forEach( (e,i) => console.log(i, e.toString() )) ;    
+        vq.forEach( (e,i) => console.log("\n["+i+"] ", e.toString() )) ;    
     
         return inferred;
     

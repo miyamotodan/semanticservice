@@ -28,4 +28,11 @@ rule:BR_term_2_5 rule:isInAssumption "false".
 rule:BR_term_3_4 rule:hasChunk "SA.SA_DIZ_STATO_INIZIATIVA.DESCRIZIONE".
 rule:BR_term_3_4 rule:hasVarChunk "BR_var2|sospesa".
 rule:BR_term_3_4 rule:isInAssumption "true".
-rule:BR_term_1_4 rule:hasChunk "[SUM(SA.SA_DATI_LOTTO.IMPORTO_AGGIUDICATO)][SA.SA_DATI_LOTTO][BR_var3]".
+rule:BR_term_1_4 rule:hasChunk "SA.SA_DATI_LOTTO.IMPORTO_AGGIUDICATO".
+rule:BR_term_1_4 rule:hasVarChunk "BR_var2|BR_var3".
+rule:BR_term_3_9 rule:hasChunk "SA.SA_DIZ_STATO_LOTTI.DESCRIZIONE".
+rule:BR_term_3_9 rule:hasVarChunk "BR_var4|bandito|aggidicato|attivo".
+rule:BR_term_3_9 rule:isInAssumption "false".
+rule:BR_term_3_10 rule:hasChunk "SA.SA_DIZ_STATO_LOTTI.DESCRIZIONE".
+rule:BR_term_3_10 rule:hasVarChunk "BR_var4|sospeso".
+rule:BR_term_3_10 rule:isInAssumption "false".

@@ -10,10 +10,10 @@ SELECT ?r ?o ?c ?l ?v ?b WHERE {
   ?r ?p ?a .
   ?a rule:hasTerm ?t .
   ?t rdfs:label ?l .
-  ?t rule:hasChunk ?c .
   ?t rule:termOrder ?o .
-  OPTIONAL {?t rule:isInAssumption ?b } 
+  OPTIONAL { ?t rule:hasChunk ?c } 
   OPTIONAL { ?t rule:hasVarChunk ?v }
+  OPTIONAL { ?t rule:isInAssumption ?b }
 
   #FILTER (?r = <http://localhost:8080/onto_rule#BR_rule_3>)
 
