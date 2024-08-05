@@ -138,8 +138,7 @@ class Meta2SQL {
                   vq[nq].field(data[0], data[0].replaceAll('.',''));    //metto il campo in proiezione
                   mq = true;                                            //si deve fare una query annidata
                   let el = vars.slice(1).map((e) => "'"+e+"'").join(",");
-                  
-                  //TODO: bisogna prevedere che mqd sia un vettore di vettori perché altrimenti non si possono mettere più HAVING nella main-query 
+                  mqd.push([e.b, data[0].replaceAll('.',''), el, "="]); //conservo i dati per la scrittura delle condizioni HAVING sulla quey annidata
               } else
               if (ct=="DataPropertyListAllNotIn") {
                   let vars = e.v.split("|");
@@ -147,9 +146,7 @@ class Meta2SQL {
                   vq[nq].field(data[0], data[0].replaceAll('.',''));    //metto il campo in proiezione
                   mq = true;                                            //si deve fare una query annidata
                   let el = vars.slice(1).map((e) => "'"+e+"'").join(",");
-                  
-                  //TODO: bisogna prevedere che mqd sia un vettore di vettori perché altrimenti non si possono mettere più HAVING nella main-query
-                  mqd.push([e.b, data[0].replaceAll('.',''), el]); //conservo i dati per la scrittura delle condizioni HAVING sulla quey annidata
+                  mqd.push([e.b, data[0].replaceAll('.',''), el, ">"]); //conservo i dati per la scrittura delle condizioni HAVING sulla quey annidata
               } else
               if (ct=="ClassInstance") {
                 //non deve fare nulla
@@ -195,11 +192,14 @@ class Meta2SQL {
 
           //query annidata (1 livello...)
           if (mq) 
+            vq[nq] = squel.select().from(vq[nq]).field(mainTable.pk); 
+            vq[nq].group(mainTable.pk);
+            let sqlexpr = squel.expr();
             mqd.forEach((e,i) => {
-              vq[nq] = squel.select().from(vq[nq]).field(mainTable.pk);
-              vq[nq].group(mainTable.pk);
-              vq[nq].having("SUM(CASE WHEN "+e[1]+" IN ("+e[2]+") THEN 1 END) > 0");
+              sqlexpr.or("SUM(CASE WHEN "+e[1]+" IN ("+e[2]+") THEN 1 END) "+e[3]+" 0");
             });
+            vq[nq].having(sqlexpr);
+            
         })
 
         //stampo le query
