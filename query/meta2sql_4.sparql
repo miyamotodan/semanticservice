@@ -15,6 +15,6 @@ SELECT ?r ?o ?c ?l ?v ?b WHERE {
   OPTIONAL { ?t rule:hasVarChunk ?v }
   OPTIONAL { ?t rule:isInAssumption ?b }
 
-  #FILTER (?r = <http://localhost:8080/onto_rule#BR_rule_3>)
+  FILTER (?r = <http://localhost:8080/onto_rule#BR_rule_4>)
 
 } order by ASC (?r) ASC (?o) 

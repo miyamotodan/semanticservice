@@ -6,13 +6,20 @@ class Graph {
     }
 
     addVertex(vertex, data) {
+
+        //console.log(">>> addVertex:",vertex,data);
+        //se il nodo non esiste lo aggiunge alla lista delle diacenze
         if (!this.adjacencyList[vertex]) {
             this.adjacencyList[vertex] = [];
-            this.dataSet.set(vertex,data);
+            
         }
+        //se i dati non ci sono li mette
+        if (!this.dataSet.get(vertex)) this.dataSet.set(vertex,data);
     }
 
     addEdge(vertex1, vertex2, oriented) {
+
+        //console.log(">>> addEge:",vertex1,vertex2,oriented);
         if (!this.adjacencyList[vertex1].includes(vertex2)) this.adjacencyList[vertex1].push(vertex2);
         if (!oriented) // Se il grafo è non orientato
             if (!this.adjacencyList[vertex2].includes(vertex1)) this.adjacencyList[vertex2].push(vertex1); 

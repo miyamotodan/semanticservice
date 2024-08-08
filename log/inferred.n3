@@ -6,6 +6,8 @@ rule:BR_term_2_1 rule:hasChunk "SA.SA_DATI|SA.SA_DATI.ID_INIZIATIVA_SOGG_AGGR".
 rule:BR_term_2_1 rule:hasVarChunk "BR_var1".
 rule:BR_term_3_1 rule:hasChunk "SA.SA_DATI|SA.SA_DATI.ID_INIZIATIVA_SOGG_AGGR".
 rule:BR_term_3_1 rule:hasVarChunk "BR_var1".
+rule:BR_term_4_1 rule:hasChunk "SA.SA_DATI|SA.SA_DATI.ID_INIZIATIVA_SOGG_AGGR".
+rule:BR_term_4_1 rule:hasVarChunk "BR_var1".
 rule:BR_term_1_2 rule:hasChunk "SA.SA_DATI_LOTTO|SA.SA_DATI|SA.SA_DATI_LOTTO.ID_INIZIATIVA_SOGG_AGGR|SA.SA_DATI.ID_INIZIATIVA_SOGG_AGGR".
 rule:BR_term_1_2 rule:hasVarChunk "BR_var1|BR_var2".
 rule:BR_term_2_3 rule:hasChunk "SA.SA_DATI|SA.SA_DIZ_TIPO_LOTTI|SA.SA_DATI.ID_TIPO_LOTTI|SA.SA_DIZ_TIPO_LOTTI.ID_TIPO_LOTTI".
@@ -16,6 +18,14 @@ rule:BR_term_3_7 rule:hasChunk "SA.SA_DATI_LOTTO|SA.SA_DATI|SA.SA_DATI_LOTTO.ID_
 rule:BR_term_3_7 rule:hasVarChunk "BR_var1|BR_var3".
 rule:BR_term_3_8 rule:hasChunk "SA.SA_DATI_LOTTO|SA.SA_DIZ_STATO_LOTTI|SA.SA_DATI_LOTTO.ID_STATO_LOTTO|SA.SA_DIZ_STATO_LOTTI.ID_STATO_LOTTO".
 rule:BR_term_3_8 rule:hasVarChunk "BR_var3|BR_var4".
+rule:BR_term_4_10 rule:hasChunk "SA.SA_DATI_LOTTO|SA.SA_DIZ_MERCEOLOGIA|SA.SA_DATI_LOTTO.ID_MERCEOLOGIA|SA.SA_DIZ_MERCEOLOGIA.ID_MERCEOLOGIA".
+rule:BR_term_4_10 rule:hasVarChunk "BR_var3|BR_var5".
+rule:BR_term_4_3 rule:hasChunk "SA.SA_DATI|SA.SA_DIZ_STATO_INIZIATIVA|SA.SA_DATI.ID_STATO_INIZIATIVA|SA.SA_DIZ_STATO_INIZIATIVA.ID_STATO_INIZIATIVA".
+rule:BR_term_4_3 rule:hasVarChunk "BR_var1|BR_var2".
+rule:BR_term_4_6 rule:hasChunk "SA.SA_DATI_LOTTO|SA.SA_DATI|SA.SA_DATI_LOTTO.ID_INIZIATIVA_SOGG_AGGR|SA.SA_DATI.ID_INIZIATIVA_SOGG_AGGR".
+rule:BR_term_4_6 rule:hasVarChunk "BR_var1|BR_var3".
+rule:BR_term_4_8 rule:hasChunk "SA.SA_DATI_CATEGORIE|SA.SA_DATI|SA.SA_DATI_CATEGORIE.ID_INIZIATIVA_SOGG_AGGR|SA.SA_DATI.ID_INIZIATIVA_SOGG_AGGR|SA.SA_DATI_CATEGORIE|SA.SA_DIZ_MERCEOLOGIA|SA.SA_DATI_CATEGORIE.ID_MERCEOLOGIA|SA.SA_DIZ_MERCEOLOGIA.ID_MERCEOLOGIA".
+rule:BR_term_4_8 rule:hasVarChunk "BR_var1|BR_var4".
 rule:BR_term_1_5 rule:hasChunk "SA.SA_DATI.VALORE_AGGIUDICATO".
 rule:BR_term_1_5 rule:hasVarChunk "BR_var1|BR_var3".
 rule:BR_term_1_5 rule:isInAssumption "false".
@@ -28,6 +38,9 @@ rule:BR_term_2_5 rule:isInAssumption "false".
 rule:BR_term_3_4 rule:hasChunk "SA.SA_DIZ_STATO_INIZIATIVA.DESCRIZIONE".
 rule:BR_term_3_4 rule:hasVarChunk "BR_var2|sospesa".
 rule:BR_term_3_4 rule:isInAssumption "true".
+rule:BR_term_4_4 rule:hasChunk "SA.SA_DIZ_STATO_INIZIATIVA.DESCRIZIONE".
+rule:BR_term_4_4 rule:hasVarChunk "BR_var2|programmata".
+rule:BR_term_4_4 rule:isInAssumption "true".
 rule:BR_term_1_4 rule:hasChunk "SA.SA_DATI_LOTTO.IMPORTO_AGGIUDICATO".
 rule:BR_term_1_4 rule:hasVarChunk "BR_var2|BR_var3".
 rule:BR_term_3_9 rule:hasChunk "SA.SA_DIZ_STATO_LOTTI.DESCRIZIONE".

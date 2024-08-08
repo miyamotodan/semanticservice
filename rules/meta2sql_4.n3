@@ -44,7 +44,7 @@
 }
 .
 
-#ObjectPropertyInstance
+#ObjectPropertyInstance (Objectproperty_map_with_Foreignkey)
 {
 
     #riconosco il costrutto
@@ -87,6 +87,64 @@
 
 }.
 
+#ObjectPropertyInstance (Objectproperty_map_with_Table)
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r rule:hasAssumption ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:ObjectPropertyInstance ?op .
+    ?r log:localName ?iname .
+
+    #recupero metadati mapping
+    ?op mapp:Objectproperty_map_with_Table ?ct .
+    ( ?fk { ?fk mapp:Foreignkey_belongs_to_Table ?ct . } ?list ) log:collectAllIn _:t .
+    ?list list:first ?fk1 . #prima fk della tabella di cross
+    ?list list:last ?fk2 .  #seconda fk della tebella di cross
+
+    ?fk1 mapp:Foreignkey_composed_by_Tablecolumn ?fk1c .
+    ?fk1 mapp:Foreignkey_belongs_to_Table ?tb11 .
+    ?fk1 mapp:Foreignkey_references_Primarykey ?pk1 .
+    ?pk1 mapp:Primarykey_belongs_to_Table ?tb12 .
+    ?pk1 mapp:Primarykey_Sequence ?pk1c.
+
+    ?fk2 mapp:Foreignkey_composed_by_Tablecolumn ?fk2c .
+    ?fk2 mapp:Foreignkey_belongs_to_Table ?tb21 .
+    ?fk2 mapp:Foreignkey_references_Primarykey ?pk2 .
+    ?pk2 mapp:Primarykey_belongs_to_Table ?tb22 .
+    ?pk2 mapp:Primarykey_Sequence ?pk2c.
+
+    #preparazione query
+    ?tb11 log:localName ?tb11ln .
+    ?tb12 log:localName ?tb12ln .
+    ?fk1c log:localName ?fk1cln .
+    ?pk1c log:localName ?pk1cln .
+
+    ?tb21 log:localName ?tb21ln .
+    ?tb22 log:localName ?tb22ln .
+    ?fk2c log:localName ?fk2cln .
+    ?pk2c log:localName ?pk2cln .
+
+    ( ?v { ?t rule:hasVariable ?v . } ?listv ) log:collectAllIn _:t .
+    ?listv list:first ?v1 .
+    ?listv list:last ?v2 .
+    ?v1 log:localName ?v1l .
+    ?v2 log:localName ?v2l .
+
+    #composizione query
+    ( ?tb11ln "|" ?tb12ln "|" ?fk1cln "|" ?pk1cln "|" ?tb21ln "|" ?tb22ln "|" ?fk2cln "|" ?pk2cln ) string:concatenation ?sql .
+    ( ?v1l "|" ?v2l ) string:concatenation ?var .
+
+
+} => {
+
+    #lego la stringa alla regola
+    ?t rule:hasChunk ?sql .
+    ?t rule:hasVarChunk ?var .
+
+}.
+
 #DataPropertyEqualsTo
 {
 
@@ -95,6 +153,68 @@
     ?r ?p ?a .
     ?a rule:hasTerm ?t .
     ?t rule:DataPropertyEqualsTo ?dp .
+    ?r log:localName ?iname .
+
+    #recupero metadati mapping
+    ?dp mapp:Dataproperty_map_with_Tablecolumn ?dpc .
+
+    #preparazione query
+    ?dpc log:localName ?dpcln .
+
+    (
+       { ?t rule:hasConstant ?c . }
+       { #THEN   
+        ?c rule:hasValue ?cv .
+        ( ?vv ?vt ) log:dtlit ?cv .
+        ?t rule:hasVariable ?v .
+        ?v log:localName ?vln .
+
+        #composizione query
+        ( ?dpcln ) string:concatenation ?sql .
+        ( ?vln "|" ?vv ) string:concatenation ?var .
+
+       }
+       { #ELSE 
+        ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
+        ?list list:first ?v1 .
+        ?list list:last ?v2 .
+        ?v1 log:localName ?v1l .
+        ?v2 log:localName ?v2l .
+
+        #composizione query
+        ( ?dpcln ) string:concatenation ?sql .
+        ( ?v1l "|" ?v2l ) string:concatenation ?var .
+
+       }
+    ) log:ifThenElseIn ?SCOPE .
+
+    (
+       { ?r rule:hasAssumption ?a. }
+       { #THEN   
+         ( "true" ) string:concatenation ?b .
+       }
+       { #ELSE 
+         ( "false" ) string:concatenation ?b .
+       }
+    ) log:ifThenElseIn ?SCOPE1 .
+
+
+} => {
+
+   #lego la stringa alla regola
+   ?t rule:hasChunk ?sql .
+   ?t rule:hasVarChunk ?var .
+   ?t rule:isInAssumption ?b .
+}.
+
+#DataPropertyNotEqualsTo
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r ?p ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:DataPropertyNotEqualsTo ?dp .
     ?r log:localName ?iname .
 
     #recupero metadati mapping

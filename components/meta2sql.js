@@ -33,13 +33,16 @@ const assignMapping = (data, vars, mapping) => {
         } else //se l'impostazione corrisponde si passa alla seconda variabile
           if (mapping.get(vars[1])) //mapping della seconda variabile già impostato
               if (mapping.get(vars[1]) != data[1]) //se non corrisponde 
-                console.log("**errore nel mapping**");
+                console.log("**errore nel mapping** ",mapping.get(vars[1])+"<>"+data[1]);
               else {}
             else //mapping della seconda variabile non impostato
               if (![...mapping.values()].includes(data[1])) { //se il dato non è stato impostato su altre variabili
                 mapping.set(vars[1], data[1]); 
-              } else
-                console.log("**errore nel mapping**");
+              } else {
+                console.log("++alert nel mapping++", data[1],vars[1]); // <-- ci vuole un alias?
+                mapping.set(vars[1], data[1]); 
+              }
+                
 
      else //mapping della prima variabile non è impostato
       if (![...mapping.values()].includes(data[0])) { //se il dato non è stato impostato su altre variabili
@@ -80,15 +83,16 @@ class Meta2SQL {
         
         let rs = await Store.executeStoreQuery(q,store);
         rs = Store.getResultSet(rs.bindings);
-        console.log(rs);
+        //console.log(rs);
     
         let gr = lh.groupBy(rs,'r'); //raggruppo le righe del resultSet per regola 
         let vq = [];//vettore query 
         let nq = 0; //numero query
-       
+        console.log(gr);
+
         //per ogni regola
         lh.each(gr, (v,k) => {
-          //console.log("processing:",k);
+          console.log("processing:",k);
           let tree = new Graph(); //albero per ordinare le join
           let mapping = new Map(); //mappa le variabili con le tabelle del DB nelle Join
           let nv = 0; //numero vertici dell'albero
@@ -104,27 +108,44 @@ class Meta2SQL {
             if (e.o=="1") { //il primo termine della regola individua la tabella principale
               nv = 0;
               let data = e.c.split("|");
+              let vars = e.v.split("|");
               vq[nq]=squel.select().from(data[0]).field(data[1]); //proietto la PK
               fields2gb.push(data[1]);
-              mainTable={table:data[0],pk:data[1].substring(data[1].lastIndexOf('.')+1,100)}; //salvo la PK con il solo nome del campo in prospettiva della subquery eventuale
+              mainTable={table:data[0],pk:data[1].substring(data[1].lastIndexOf('.')+1,100),var:vars[0]}; //salvo la PK con il solo nome del campo in prospettiva della subquery eventuale
               mapping.set(e.v, data[0]); //mappa la variabile principale per le join (ordine 1)
-              tree.addVertex(data[0],data); nv++; //aggiunge il nodo della tabella all'albero delle join
+              tree.addVertex(vars[0],data); nv++; //aggiunge il nodo della tabella all'albero delle join
             } else {
               //console.log("ct:",ct );
               if (ct=="ObjectPropertyInstance") { //costruisce le join
                 let vars = e.v.split("|");
                 let data = e.c.split("|");
-                assignMapping(data,vars,mapping);   //mappa le variabili
-                tree.addVertex(data[1],data); nv++; //aggiunge il nodo della tabella all'albero delle join
-                tree.addEdge(data[0],data[1],true); //arco orientato
-                //console.log(data);
+                if (data.length==4) {
+                  assignMapping(data,vars,mapping);   //mappa le variabili
+                  tree.addVertex(vars[0]); nv++; //aggiunge il nodo della tabella all'albero delle join
+                  tree.addVertex(vars[1],data); nv++; //aggiunge il nodo della tabella all'albero delle join
+                  tree.addEdge(vars[0],vars[1],true); //arco orientato
+                  //console.log(data);
+                } else {
+                  let data1 = data.slice(0,4); //spezza in due join i dati
+                  assignMapping(data1,[vars[0], vars[0]+"-"+vars[1]],mapping);   //mappa le variabili
+                  tree.addVertex(vars[0]); nv++; //aggiunge il primo nodo della tabella all'albero delle join
+                  tree.addVertex(vars[0]+"-"+vars[1],data1); nv++; //aggiunge il secondo nodo della tabella all'albero delle join (cross)
+                  tree.addEdge(vars[0],vars[0]+"-"+vars[1],true); //arco orientato
+                  let data2 = data.slice(4); //spezza in due join i dati
+                  assignMapping(data2,[vars[0]+"-"+vars[1],vars[1]],mapping);   //mappa le variabili
+                  tree.addVertex(vars[1],data2); nv++; //aggiunge il terzo nodo della tabella all'albero delle join
+                  tree.addEdge(vars[0]+"-"+vars[1],vars[1],true); //arco orientato
+                }
               } else
-              if (ct=="DataPropertyEqualsTo") {
+              if (ct=="DataPropertyEqualsTo" || ct=="DataPropertyNotEqualsTo") {
                   let vars = e.v.split("|");
                   let data = e.c.split("|"); 
                   vq[nq].field(data[0]);   //metto il campo in proiezione
                   fields2gb.push(data[0]); //lo segno tra quelli che possono andare in GROUP BY
-                  sqd.push([e.b, data[0], vars[1]]); //conservo i dati per la scrittura di WHERE/HAVING
+                  if (ct=="DataPropertyEqualsTo")
+                    sqd.push([e.b, data[0], vars[1]]); //conservo i dati per la scrittura di WHERE/HAVING
+                  else
+                    sqd.push([!e.b, data[0], vars[1]]); //conservo i dati per la scrittura di WHERE/HAVING
               } else
               if (ct=="DataPropertySum") {
                   gb = true;
@@ -157,19 +178,27 @@ class Meta2SQL {
             }
           });
 
-          //console.log(tree);
+          console.log("## tree:",tree);
           //faccio una visita in ampiezza dell'albero generato delle ObjectPropertyInstance
-          let bfs = tree.bfs(mainTable.table); 
-          //console.log("BFS",bfs);
+          let bfs = tree.bfs(mainTable.var); 
+          console.log("## BFS:",bfs);
           
           //per ogni nodo (tranne la radice) inserisco una join
+          let joined = [];
           bfs.forEach((e,i) => {
             let data = tree.getData(e);
-            //console.log("bfs["+i+"]:"+ data)
-            if (data[1] && data[2] && data[3]) vq[nq].join("" + data[1], null ,data[2] + " = " + data[3]);
+            console.log("  bfs["+i+"]:"+ data)
+            if (data[1] && data[2] && data[3]) {
+              if (joined[data[1]]) joined[data[1]]++; else joined[data[1]]=1;
+              let ot = data[1]; //nome originale dela tabella da joinare 
+              let nt = joined[data[1]]>1?data[1]+"_"+joined[data[1]]:null; //eventuale alias
+              vq[nq].join("" + data[1], nt ,(nt!=null?data[2].replace(ot,nt):data[2]) + " = " + (nt!=null?data[3].replace(ot,nt):data[3]));
+            }
           });
 
-          console.log("*sqd*",sqd);
+          console.log("## joined:",joined);
+
+          console.log("## sqd:",sqd);
 
           //qui devo capire quando fare una WHERE e quando una HAVING
           sqd.forEach((e,i) => {
@@ -185,13 +214,14 @@ class Meta2SQL {
               else vq[nq].where(e[1]+" <> "+e[2]);
           });
           
+          console.log("## gb:",gb,fields2gb);
+          console.log("## mq:",mq);
+          
           //group by su tutti i campi proiettati tranne quelli aggregato
           if (gb) vq[nq].group(fields2gb.join(','));
 
-          console.log("*mqd*",mqd);
-
           //query annidata (1 livello...)
-          if (mq) 
+          if (mq) {
             vq[nq] = squel.select().from(vq[nq]).field(mainTable.pk); 
             vq[nq].group(mainTable.pk);
             let sqlexpr = squel.expr();
@@ -199,7 +229,10 @@ class Meta2SQL {
               sqlexpr.or("SUM(CASE WHEN "+e[1]+" IN ("+e[2]+") THEN 1 END) "+e[3]+" 0");
             });
             vq[nq].having(sqlexpr);
-            
+          }
+
+          console.log("## mapping;",mapping);
+
         })
 
         //stampo le query
