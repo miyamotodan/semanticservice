@@ -420,3 +420,50 @@
     ?t rule:isInAssumption ?b .
 
 }.
+
+#ValuesSubSet (confronto tra valori nella query with)
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r ?p ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:ValuesSubSet ?ce .
+    ?r log:localName ?iname .
+
+    #recupero metadati mapping
+    ?ce mapp:Classexpression_map_with_Table ?ct .
+    ?pk mapp:Primarykey_belongs_to_Table ?ct .
+    ?pk mapp:Primarykey_Sequence ?pkc.
+    
+    #preparazione query
+    ?pkc log:localName ?pkcln .
+
+    ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
+    ?list list:first ?v1 .
+    ?list list:last ?v2 .
+    ?v1 log:localName ?v1l .
+    ?v2 log:localName ?v2l .
+
+    #composizione query
+    ( ?v1l "|" ?v2l ) string:concatenation ?var .
+    ( ?pkcln ) string:concatenation ?sql .
+  
+    (
+       { ?r rule:hasAssumption ?a. }
+       { #THEN   
+         ( "true" ) string:concatenation ?b .
+       }
+       { #ELSE 
+         ( "false" ) string:concatenation ?b .
+       }
+    ) log:ifThenElseIn ?SCOPE1 .
+    
+} => {
+
+    #lego la stringa alla regola
+    ?t rule:hasChunk ?sql .
+    ?t rule:hasVarChunk ?var .
+    ?t rule:isInAssumption ?b .
+
+}.

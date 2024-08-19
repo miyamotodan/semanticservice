@@ -49,3 +49,6 @@ rule:BR_term_3_9 rule:isInAssumption "false".
 rule:BR_term_3_10 rule:hasChunk "SA.SA_DIZ_STATO_LOTTI.DESCRIZIONE".
 rule:BR_term_3_10 rule:hasVarChunk "BR_var4|sospeso".
 rule:BR_term_3_10 rule:isInAssumption "false".
+rule:BR_term_4_11 rule:hasChunk "SA.SA_DIZ_MERCEOLOGIA.ID_MERCEOLOGIA".
+rule:BR_term_4_11 rule:hasVarChunk "BR_var4|BR_var5".
+rule:BR_term_4_11 rule:isInAssumption "false".

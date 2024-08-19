@@ -4,7 +4,7 @@ const wt = require("worker_threads");
 const fs = require('fs');
 //console.log("wt", wt.threadId, wt.workerData);
 const Store = require('./components/store');
-const Meta2Sql = require('./components/meta2sql')
+const Meta2Sql = require('./components/meta2sql2')
 
 const applyRules2 = async (data) => {
     const chunks = [];

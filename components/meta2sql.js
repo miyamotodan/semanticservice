@@ -145,7 +145,7 @@ class Meta2SQL {
                   if (ct=="DataPropertyEqualsTo")
                     sqd.push([e.b, data[0], vars[1]]); //conservo i dati per la scrittura di WHERE/HAVING
                   else
-                    sqd.push([!e.b, data[0], vars[1]]); //conservo i dati per la scrittura di WHERE/HAVING
+                    sqd.push([!e.b, data[0], vars[1]]); //conservo i dati per la scrittura di WHERE/HAVING (inverto il booleano che indica se è in assumption perché la condizione è notEquals)
               } else
               if (ct=="DataPropertySum") {
                   gb = true;
@@ -192,7 +192,7 @@ class Meta2SQL {
               if (joined[data[1]]) joined[data[1]]++; else joined[data[1]]=1;
               let ot = data[1]; //nome originale dela tabella da joinare 
               let nt = joined[data[1]]>1?data[1]+"_"+joined[data[1]]:null; //eventuale alias
-              vq[nq].join("" + data[1], nt ,(nt!=null?data[2].replace(ot,nt):data[2]) + " = " + (nt!=null?data[3].replace(ot,nt):data[3]));
+              vq[nq].join("" + data[1], nt ,(nt!=null?data[2].replace(ot,nt):data[2]) + " = " + (nt!=null?data[3].replace(ot,nt):data[3])); //nella join uso l'eventuale alias
             }
           });
 
