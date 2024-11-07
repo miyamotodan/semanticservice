@@ -145,6 +145,50 @@
 
 }.
 
+#DataPropertyValue - ATTENZIONE qui c'è il caso che una DataProperty sia mappata con più colonne, ma la logica di come ricomporre le colonne non sta da nessuna parte nel mapping
+#                    andrebbe verificato se questa logica va portata anche in tutti gli altri casi di utilizzo di mapp:Dataproperty_map_with_Tablecolumn, per ora ho taroccato il 
+#                    mapping creando un nuovo campo per accorpare la semantica (SA.SA_DATI.DATA_ATTIVAZIONE) e spostando il mapping su un altro (SA.SA_DATI_LOTTO.DATA_ATTIVAZIONE)
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r ?p ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:DataPropertyValue ?dp .
+    ?r log:localName ?iname .
+
+    #recupero metadati mapping
+    ( ?v { ?dp mapp:Dataproperty_map_with_Tablecolumn ?dpc .  ?dpc log:localName ?v . } ?dpclnl ) log:collectAllIn _:t .
+
+    #preparazione query
+    ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
+    ?list list:first ?v1 .
+    ?list list:last ?v2 .
+    ?v1 log:localName ?v1l .
+    ?v2 log:localName ?v2l .
+
+    #composizione query
+    ( ?dpclnl "|" ) string:join ?sql .
+    ( ?v1l "|" ?v2l ) string:concatenation ?var .
+
+    (
+       { ?r rule:hasAssumption ?a. }
+       { #THEN   
+         ( "true" ) string:concatenation ?b .
+       }
+       { #ELSE 
+         ( "false" ) string:concatenation ?b .
+       }
+    ) log:ifThenElseIn ?SCOPE1 .
+
+} => {
+
+   #lego la stringa alla regola
+   ?t rule:hasChunk ?sql .
+   ?t rule:hasVarChunk ?var .
+   ?t rule:isInAssumption ?b .
+}.
+
 #DataPropertyEqualsTo
 {
 
@@ -215,6 +259,130 @@
     ?r ?p ?a .
     ?a rule:hasTerm ?t .
     ?t rule:DataPropertyNotEqualsTo ?dp .
+    ?r log:localName ?iname .
+
+    #recupero metadati mapping
+    ?dp mapp:Dataproperty_map_with_Tablecolumn ?dpc .
+
+    #preparazione query
+    ?dpc log:localName ?dpcln .
+
+    (
+       { ?t rule:hasConstant ?c . }
+       { #THEN   
+        ?c rule:hasValue ?cv .
+        ( ?vv ?vt ) log:dtlit ?cv .
+        ?t rule:hasVariable ?v .
+        ?v log:localName ?vln .
+
+        #composizione query
+        ( ?dpcln ) string:concatenation ?sql .
+        ( ?vln "|" ?vv ) string:concatenation ?var .
+
+       }
+       { #ELSE 
+        ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
+        ?list list:first ?v1 .
+        ?list list:last ?v2 .
+        ?v1 log:localName ?v1l .
+        ?v2 log:localName ?v2l .
+
+        #composizione query
+        ( ?dpcln ) string:concatenation ?sql .
+        ( ?v1l "|" ?v2l ) string:concatenation ?var .
+
+       }
+    ) log:ifThenElseIn ?SCOPE .
+
+    (
+       { ?r rule:hasAssumption ?a. }
+       { #THEN   
+         ( "true" ) string:concatenation ?b .
+       }
+       { #ELSE 
+         ( "false" ) string:concatenation ?b .
+       }
+    ) log:ifThenElseIn ?SCOPE1 .
+
+
+} => {
+
+   #lego la stringa alla regola
+   ?t rule:hasChunk ?sql .
+   ?t rule:hasVarChunk ?var .
+   ?t rule:isInAssumption ?b .
+}.
+
+#DataPropertyGreaterThen
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r ?p ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:DataPropertyGreaterThan ?dp .
+    ?r log:localName ?iname .
+
+    #recupero metadati mapping
+    ?dp mapp:Dataproperty_map_with_Tablecolumn ?dpc .
+
+    #preparazione query
+    ?dpc log:localName ?dpcln .
+
+    (
+       { ?t rule:hasConstant ?c . }
+       { #THEN   
+        ?c rule:hasValue ?cv .
+        ( ?vv ?vt ) log:dtlit ?cv .
+        ?t rule:hasVariable ?v .
+        ?v log:localName ?vln .
+
+        #composizione query
+        ( ?dpcln ) string:concatenation ?sql .
+        ( ?vln "|" ?vv ) string:concatenation ?var .
+
+       }
+       { #ELSE 
+        ( ?v { ?t rule:hasVariable ?v . } ?list ) log:collectAllIn _:t .
+        ?list list:first ?v1 .
+        ?list list:last ?v2 .
+        ?v1 log:localName ?v1l .
+        ?v2 log:localName ?v2l .
+
+        #composizione query
+        ( ?dpcln ) string:concatenation ?sql .
+        ( ?v1l "|" ?v2l ) string:concatenation ?var .
+
+       }
+    ) log:ifThenElseIn ?SCOPE .
+
+    (
+       { ?r rule:hasAssumption ?a. }
+       { #THEN   
+         ( "true" ) string:concatenation ?b .
+       }
+       { #ELSE 
+         ( "false" ) string:concatenation ?b .
+       }
+    ) log:ifThenElseIn ?SCOPE1 .
+
+
+} => {
+
+   #lego la stringa alla regola
+   ?t rule:hasChunk ?sql .
+   ?t rule:hasVarChunk ?var .
+   ?t rule:isInAssumption ?b .
+}.
+
+#DataPropertyLessThen
+{
+
+    #riconosco il costrutto
+    ?r a rule:Rule .
+    ?r ?p ?a .
+    ?a rule:hasTerm ?t .
+    ?t rule:DataPropertyLessThan ?dp .
     ?r log:localName ?iname .
 
     #recupero metadati mapping

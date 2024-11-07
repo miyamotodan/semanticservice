@@ -34,6 +34,9 @@ const applyRules2 = async (data) => {
       outputType: "string",
     });
     
+    console.log("applyRules")
+    fs.writeFileSync('./log/inferred.n3', inferred);
+
     return inferred;
 
   }

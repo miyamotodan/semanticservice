@@ -33,7 +33,10 @@ const assignFieldMapping = (data, vars, fieldMapping)=> {
       //fieldMapping.set(data[0]+"_"+vars[0],fn);
       fieldMapping.set(data[0],fn);
 
-    return {prj:prj,alias:fn,field:data[0]}
+    let res = {prj:prj,alias:fn,field:data[0]};
+    //console.log("+++res",res);
+
+    return res
 }
 
 
@@ -81,7 +84,7 @@ const assignMapping = (data, vars, mapping) => {
       
       return
   }
-
+  
   //estrae il nome del campo
   function fieldName (f) {
     let res = f;
@@ -97,12 +100,12 @@ const assignMapping = (data, vars, mapping) => {
   }
 
   function aliasTabName (e,data,tabMapping) {
-    //console.log("aliasTabName-->", e, data);
+    //console.log("aliasTabName-->", e, data, tabMapping);
     let res = null;
     let mapp = tabMapping.get(e).split('|'); //se esiste un valore vicino alla tabella nel mapping deve essere usato per l'alias 
     console.log("(",mapp,")");
     if (mapp.length>1) res=data[1]+"_"+mapp[1]; //se esiste un valore vicino alla tabella nel mapping deve essere usato per l'alias
-    return res;  
+    return res;
   }
 
 //classe che espone un metodo di ragionamento custom dedicato alla costruzione di query SQL a partire da metadati
@@ -148,6 +151,7 @@ class Meta2SQL {
           
           let tabMapping = new Map(); //mappa le variabili con le tabelle del DB nelle Join
           let fieldMapping = new Map(); //mappa i campi da proiettare con gli alias
+          let varMapping = new Map(); //mappa le variabili con gli alias
 
           let nv = 0; //numero vertici dell'albero
           let mainTable = {};
@@ -155,11 +159,21 @@ class Meta2SQL {
           let gb = false;     //indica che bisogna fare il group by
           let hwc = [];       //vettore che prepara la costruzione della HAVING o della WHERE
           let scw = [];       //vettore che prepara la costruzione della sum case when
-          let cdc = [];       //vettore che prepara la costruzione della subquey per il confronto tra insiemi di valori 
-          
+
           nq++;
           vq[nq]={};
+                  
+          //ordino i costrutti della regola ATTENZIONE ALTRIMENTI IL CENSIMENTO DELLE VARIABILI E DELLE TABELLE POTREBBE FALLIRE
+          v=lh.orderBy(
+            v, 
+            function (e) {
+              return new Number(e.o);
+            },
+            ["asc"]
+          );
+          
           lh.each(v, (e,i) => {
+            console.log('i:',i,'o:',e.o);
             let ct = e.l.substring(0,e.l.indexOf("("));
             if (e.o=="1") { //il primo termine della regola individua la tabella principale
               nv = 0;
@@ -180,127 +194,174 @@ class Meta2SQL {
               tabMapping.set(e.v, data[0]); //mappa la variabile principale per le join (ordine 1)
               tree.addVertex(vars[0],data); nv++; //aggiunge il nodo della tabella all'albero delle join
             } else {
-              //console.log("ct:",ct );
-              if (ct=="ObjectPropertyInstance") { //costruisce le join
-                let vars = e.v.split("|");
-                let data = e.c.split("|");
-                if (data.length==4) {
-                  assignMapping(data,vars,tabMapping);   //mappa le variabili
-                  tree.addVertex(vars[0]); nv++; //aggiunge il nodo della tabella all'albero delle join
-                  tree.addVertex(vars[1],data); nv++; //aggiunge il nodo della tabella all'albero delle join
-                  tree.addEdge(vars[0],vars[1],true); //arco orientato
-                  //console.log(data);
-                } else {
-                  let data1 = data.slice(0,4); //spezza in due join i dati
-                  assignMapping(data1,[vars[0], vars[0]+"-"+vars[1]],tabMapping);   //mappa le variabili
-                  tree.addVertex(vars[0]); nv++; //aggiunge il primo nodo della tabella all'albero delle join
-                  tree.addVertex(vars[0]+"-"+vars[1],data1); nv++; //aggiunge il secondo nodo della tabella all'albero delle join (cross)
-                  tree.addEdge(vars[0],vars[0]+"-"+vars[1],true); //arco orientato
-                  let data2 = data.slice(4); //spezza in due join i dati
-                  assignMapping(data2,[vars[0]+"-"+vars[1],vars[1]],tabMapping);   //mappa le variabili
-                  tree.addVertex(vars[1],data2); nv++; //aggiunge il terzo nodo della tabella all'albero delle join
-                  tree.addEdge(vars[0]+"-"+vars[1],vars[1],true); //arco orientato
+              console.log("ct:",ct );
+              let vars;
+              let data;
+              let fn;
+              let el;
+              if (e.v && e.c) {
+                vars = e.v.split("|");
+                data = e.c.split("|");
+
+                switch (ct) {
+                  case "ObjectPropertyInstance": 
+                    //vars = e.v.split("|");
+                    //data = e.c.split("|");
+                    if (data.length==4) {
+                      assignMapping(data,vars,tabMapping);   //mappa le variabili
+                      tree.addVertex(vars[0]); nv++; //aggiunge il nodo della tabella all'albero delle join
+                      tree.addVertex(vars[1],data); nv++; //aggiunge il nodo della tabella all'albero delle join
+                      tree.addEdge(vars[0],vars[1],true); //arco orientato
+                      //console.log(data);
+                    } else {
+                      let data1 = data.slice(0,4); //spezza in due join i dati
+                      assignMapping(data1,[vars[0], vars[0]+"-"+vars[1]],tabMapping);   //mappa le variabili
+                      tree.addVertex(vars[0]); nv++; //aggiunge il primo nodo della tabella all'albero delle join
+                      tree.addVertex(vars[0]+"-"+vars[1],data1); nv++; //aggiunge il secondo nodo della tabella all'albero delle join (cross)
+                      tree.addEdge(vars[0],vars[0]+"-"+vars[1],true); //arco orientato
+                      let data2 = data.slice(4); //spezza in due join i dati
+                      assignMapping(data2,[vars[0]+"-"+vars[1],vars[1]],tabMapping);   //mappa le variabili
+                      tree.addVertex(vars[1],data2); nv++; //aggiunge il terzo nodo della tabella all'albero delle join
+                      tree.addEdge(vars[0]+"-"+vars[1],vars[1],true); //arco orientato
+                    }
+
+                    break;
+                  case "DataPropertyEqualsTo":
+                  case "DataPropertyNotEqualsTo":
+                  case "DataPropertyGreaterThan":
+                  case "DataPropertyLessThan": 
+                    //vars = e.v.split("|");
+                    //data = e.c.split("|"); 
+
+                    fn = assignFieldMapping(data, vars, fieldMapping);
+                    if (fn.prj) {
+                      vq[nq].cte.select(fn.field+" as "+fn.alias);   //metto il campo in proiezione nella query join 
+                      vq[nq].main.select("cte."+fn.alias); //metto il campo in proiezione nella query principale
+                      fields2gb.push(fn.alias); //lo segno tra quelli che possono andare in GROUP BY
+                    }
+
+                    //conservo i dati per la scrittura di WHERE/HAVING
+                    if (ct=="DataPropertyEqualsTo")
+                      hwc.push([e.b, fn.alias, vars[1], '=', '<>']) 
+                    else
+                    if (ct=="DataPropertyNotEqualsTo")
+                      hwc.push([e.b, fn.alias, vars[1], '<>', '=']) 
+                    else
+                    if (ct=="DataPropertyGreaterThan")
+                      hwc.push([e.b, fn.alias, vars[1], '>', '<=']) 
+                    else
+                    if (ct=="DataPropertyLessThan")
+                      hwc.push([e.b, fn.alias, vars[1], '<', '>=']) 
+                    else {}
+
+                    break;
+                  case "DataPropertySum":  
+                    gb = true;
+                    //vars = e.v.split("|");
+                    //data = e.c.split("|"); 
+
+                    fn = assignFieldMapping(data, vars, fieldMapping);
+                    if (fn.prj) {
+                      vq[nq].cte.select(fn.field+" as "+fn.alias); //metto il campo in proiezione
+                      vq[nq].main.select("SUM(cte." + fn.alias + ") as " + fn.alias+"_SUM"); //metto il campo in proiezione come SUM
+                    }
+                    varMapping.set(vars[1],fn.alias+"_SUM"); //salvo l'alias legato alla variabile di appoggio
+
+                    break;
+                  case "DataPropertyValue":  
+                    //vars = e.v.split("|");
+                    //data = e.c.split("|");
+                    fn = assignFieldMapping(data, vars, fieldMapping);
+                    if (fn.prj) {
+                      vq[nq].cte.select(fn.field+" as "+fn.alias); //metto il campo in proiezione
+                      vq[nq].main.select("cte."+fn.alias); //metto il campo in proiezione
+                      fields2gb.push(fn.alias); //lo segno tra quelli che possono andare in GROUP BY
+                    }
+                    varMapping.set(vars[1],fn.alias); //salvo l'alias legato alla variabile di appoggio
+
+                    break;  
+                  case "DataPropertyListSomeIn":  
+                    //vars = e.v.split("|");
+                    //data = e.c.split("|");
+                    gb=true;
+                    fn = assignFieldMapping(data, vars, fieldMapping);
+                    if (fn.prj) {
+                      vq[nq].cte.select(fn.field+" as "+fn.alias); //metto il campo in proiezione
+                      vq[nq].main.select("cte."+fn.alias); //metto il campo in proiezione
+                      fields2gb.push(fn.alias); //lo segno tra quelli che possono andare in GROUP BY
+                    }
+
+                    el = vars.slice(1).map((e) => "'"+e+"'").join(",");
+                    scw.push([e.b, fn.alias, el, "="]); //conservo i dati per la scrittura delle condizioni HAVING sulla quey annidata
+
+                    break;   
+                  case "DataPropertyListAllNotIn":
+                    //vars = e.v.split("|");
+                    //data = e.c.split("|");
+                    gb=true;
+                    fn = assignFieldMapping(data, vars, fieldMapping);
+                    if (fn.prj) {
+                      vq[nq].cte.select(fn.field+" as "+fn.alias); //metto il campo in proiezione
+                      vq[nq].main.select("cte."+fn.alias); //metto il campo in proiezione
+                      fields2gb.push(fn.alias); //lo segno tra quelli che possono andare in GROUP BY
+                    }
+
+                    el = vars.slice(1).map((e) => "'"+e+"'").join(",");
+                    scw.push([e.b, fn.alias, el, ">"]); //conservo i dati per la scrittura delle condizioni HAVING sulla quey annidata
+
+                    break;
+                  case "ValuesSubSet":  
+                    //vars = e.v.split("|");
+                    //data = e.c.split("|");
+
+                    //il ragionatore in c ovvero "data" passa la PK della tabella, il confronto infatti avviene con riferimento ad una specifica classe
+                    //perché riguarda insiemi di istanze di quella classe che devono essere uno contenuto nell'altro. 
+                    //Ad esempio : ValuesSubSet(ContrattiPubblici_CategoriaMerceologica,v4,v5) ha senso perchè stiamo confrontand due insiemi
+                    //di istanze della classe ContrattiPubblici_CategoriaMerceologica (tramite la loro PK) individuati dalle variabili v4 e v5
+
+                    //devo proiettare la PK con i corretti ALIAS per poi fare la verifica
+                    //console.log("ValuesSubSet-----");
+                    let ot=tabName(data[0]);
+                    let nt=aliasTabName(vars[0],[null,ot],tabMapping); //riuso la funzione che costruisce l'eventuale alias in fase di join
+                    let fn1 = assignFieldMapping([nt?data[0].replace(ot,nt):data[0]], [vars[0]], fieldMapping);
+                    //console.log("fn1:",fn1);
+                    if (fn1.prj) {
+                      vq[nq].cte.select(fn1.field+" as "+fn1.alias); //metto il campo in proiezione
+                      vq[nq].main.select("cte."+fn1.alias); //metto il campo in proiezione
+                      fields2gb.push(fn1.alias); //lo segno tra quelli che possono andare in GROUP BY
+                    }
+                    nt=aliasTabName(vars[1],[null,ot],tabMapping); //riuso la funzione che costruisce l'eventuale alias in fase di join
+                    let fn2 = assignFieldMapping([nt?data[0].replace(ot,nt):data[0]], [vars[1]], fieldMapping);
+                    //console.log("fn2:",fn2);
+                    if (fn2.prj) {
+                      vq[nq].cte.select(fn2.field+" as "+fn2.alias); //metto il campo in proiezione
+                      vq[nq].main.select("cte."+fn2.alias); //metto il campo in proiezione
+                      fields2gb.push(fn2.alias); //lo segno tra quelli che possono andare in GROUP BY
+                    }
+                    //console.log("-----------------");
+                    gb = true;
+
+                    //non c'è bisogno di conservare i dati e piazzare la condizione alla fine si può fare subito (?)
+                    let pkj = fieldMapping.get(mainTable.table+"."+mainTable.pk); //assumo che la chiave di riferimento è quella della tabella principale proiettata nella cte 
+                    //console.log("PKJ", pkj, mainTable);
+                    vq[nq].main.having(knex.raw("COUNT(DISTINCT "+fn1.alias+") > COUNT(DISTINCT CASE WHEN "+fn1.alias+" IN ( SELECT "+fn2.alias+" FROM cte t2 WHERE t2."+pkj+" = cte."+pkj+" ) THEN "+fn1.alias+" END )"));
+
+                    break;
+                  case "ClassInstance":  
+
+                    //per ora non fa nulla ma si potrebbe fare in modo che questo costrutto passi in c (attraverso il ragionatore) i riferimenti
+                    //alla PK della tabella che potrebbe essere usata per seplificare qualche passaggio dei casi precedenti
+
+                    break;
+
+                  default:
+                    console.log("**COSTRUTTO NON RICONOSCIUTO**", ct);
+                    break;
+                  
                 }
-              } else
-              if (ct=="DataPropertyEqualsTo" || ct=="DataPropertyNotEqualsTo") {
-                let vars = e.v.split("|");
-                let data = e.c.split("|"); 
 
-                let fn = assignFieldMapping(data, vars, fieldMapping);
-                if (fn.prj) {
-                  vq[nq].cte.select(fn.field+" as "+fn.alias);   //metto il campo in proiezione nella query join 
-                  vq[nq].main.select("cte."+fn.alias); //metto il campo in proiezione nella query principale
-                  fields2gb.push(fn.alias); //lo segno tra quelli che possono andare in GROUP BY
-                }
-
-                if (ct=="DataPropertyEqualsTo")
-                  hwc.push([e.b, fn.alias, vars[1]]); //conservo i dati per la scrittura di WHERE/HAVING
-                else
-                  hwc.push([!e.b, fn.alias, vars[1]]); //conservo i dati per la scrittura di WHERE/HAVING (inverto il booleano che indica se è in assumption perché la condizione è notEquals)
-            } else 
-            if (ct=="DataPropertySum") {
-              gb = true;
-              let vars = e.v.split("|");
-              let data = e.c.split("|"); 
-
-              let fn = assignFieldMapping(data, vars, fieldMapping);
-              if (fn.prj) {
-                vq[nq].cte.select(fn.field+" as "+fn.alias); //metto il campo in proiezione
-                vq[nq].main.select("SUM(cte." + fn.alias + ") as " + vars[1]); //metto il campo in proiezione come SUM
-              }
-            }  else
-            if (ct=="DataPropertyListSomeIn") {
-              let vars = e.v.split("|");
-              let data = e.c.split("|");
-              gb=true;
-              let fn = assignFieldMapping(data, vars, fieldMapping);
-              if (fn.prj) {
-                vq[nq].cte.select(fn.field+" as "+fn.alias); //metto il campo in proiezione
-                vq[nq].main.select("cte."+fn.alias); //metto il campo in proiezione
-                fields2gb.push(fn.alias); //lo segno tra quelli che possono andare in GROUP BY
-              }
-
-              let el = vars.slice(1).map((e) => "'"+e+"'").join(",");
-              scw.push([e.b, fn.alias, el, "="]); //conservo i dati per la scrittura delle condizioni HAVING sulla quey annidata
-
-          } else
-          if (ct=="DataPropertyListAllNotIn") {
-              let vars = e.v.split("|");
-              let data = e.c.split("|");
-              gb=true;
-              let fn = assignFieldMapping(data, vars, fieldMapping);
-              if (fn.prj) {
-                vq[nq].cte.select(fn.field+" as "+fn.alias); //metto il campo in proiezione
-                vq[nq].main.select("cte."+fn.alias); //metto il campo in proiezione
-                fields2gb.push(fn.alias); //lo segno tra quelli che possono andare in GROUP BY
-              }
-
-              let el = vars.slice(1).map((e) => "'"+e+"'").join(",");
-              scw.push([e.b, fn.alias, el, ">"]); //conservo i dati per la scrittura delle condizioni HAVING sulla quey annidata
-
-          } else
-          if (ct=="ValuesSubSet") {
-            let vars = e.v.split("|");
-            let data = e.c.split("|");
-            
-            //il ragionatore in c ovvero "data" passa la PK della tabella, il confronto infatti avviene con riferimento ad una specifica classe
-            //perché riguarda insiemi di istanze di quella classe che devono essere uno contenuto nell'altro. 
-            //Ad esempio : ValuesSubSet(ContrattiPubblici_CategoriaMerceologica,v4,v5) ha senso perchè stiamo confrontand due insiemi
-            //di istanze della classe ContrattiPubblici_CategoriaMerceologica (tramite la loro PK) individuati dalle variabili v4 e v5
-
-            //devo proiettare la PK con i corretti ALIAS per poi fare la verifica
-            //console.log("ValuesSubSet-----");
-            let ot=tabName(data[0]);
-            let nt=aliasTabName(vars[0],[null,ot],tabMapping); //riuso la funzione che costruisce l'eventuale alias in fase di join
-            let fn1 = assignFieldMapping([nt?data[0].replace(ot,nt):data[0]], [vars[0]], fieldMapping);
-            //console.log("fn1:",fn1);
-            if (fn1.prj) {
-              vq[nq].cte.select(fn1.field+" as "+fn1.alias); //metto il campo in proiezione
-              vq[nq].main.select("cte."+fn1.alias); //metto il campo in proiezione
-              fields2gb.push(fn1.alias); //lo segno tra quelli che possono andare in GROUP BY
-            }
-            nt=aliasTabName(vars[1],[null,ot],tabMapping); //riuso la funzione che costruisce l'eventuale alias in fase di join
-            let fn2 = assignFieldMapping([nt?data[0].replace(ot,nt):data[0]], [vars[1]], fieldMapping);
-            //console.log("fn2:",fn2);
-            if (fn2.prj) {
-              vq[nq].cte.select(fn2.field+" as "+fn2.alias); //metto il campo in proiezione
-              vq[nq].main.select("cte."+fn2.alias); //metto il campo in proiezione
-              fields2gb.push(fn2.alias); //lo segno tra quelli che possono andare in GROUP BY
-            }
-            //console.log("-----------------");
-            gb = true;
-
-            //non c'è bisogno di conservare i dati e piazzare la condizione alla fine si può fare subito (?)
-            let pkj = fieldMapping.get(mainTable.table+"."+mainTable.pk); //assumo che la chiave di riferimento è quella della tabella principale proiettata nella cte 
-            //console.log("PKJ", pkj, mainTable);
-            vq[nq].main.having(knex.raw("COUNT(DISTINCT "+fn1.alias+") > COUNT(DISTINCT CASE WHEN "+fn1.alias+" IN ( SELECT "+fn2.alias+" FROM cte t2 WHERE t2."+pkj+" = cte."+pkj+" ) THEN "+fn1.alias+" END )"));
-
-          } else 
-            if (ct=="ClassInstance") {
-              //per ora non fa nulla ma si potrebbe fare in modo che questo costrutto passi in c (attraverso il ragionatore) i riferimenti
-              //alla PK della tabella che potrebbe essere usata per seplificare qualche passaggio dei casi precedenti
-            } else {
-                console.log("*costrutto non riconosciuto*",ct);
+              } else {
+                console.log("**dati di mapping non presenti**", ct);
               }
               
             }
@@ -329,18 +390,19 @@ class Meta2SQL {
 
           //qui devo capire quando fare una WHERE e quando una HAVING a seconda che ci sia stato o meno una group by
           hwc.forEach((e,i) => {
-            //console.log("("+i+") ",e);
-            if (!e[2].startsWith("BR_var")) e[2]="'"+e[2]+"'"; //se è una variabile o un valore
+            console.log("###("+i+") ",e);
+            if (!e[2].startsWith("BR_var")) e[2]="'"+e[2]+"'"; //se è una variabile o un valore metto gli apici
+            else e[2] = varMapping.get(e[2]); //se è una variabile recupero l'alias del campo corrispondente
             if (gb)
               if (fields2gb.includes(e[1]))
-                if (e[0]=="true") vq[nq].main.having(knex.raw(e[1]+" = "+e[2]));
-                else vq[nq].main.having(knex.raw(e[1]+" <> "+e[2]));
+                if (e[0]=="true") vq[nq].main.having(knex.raw(e[1]+e[3]+e[2]));
+                else vq[nq].main.having(knex.raw(e[1]+e[4]+e[2]));
               else {
                 console.log("*errore nella costruzione della HAVING*",ct);
               }  
             else   
-              if (e[0]=="true") vq[nq].main.where(knex.raw(e[1]+" = "+e[2]));
-              else vq[nq].main.where(knex.raw(e[1]+" <> "+e[2]));
+              if (e[0]=="true") vq[nq].main.where(knex.raw(e[1]+e[3]+e[2]));
+              else vq[nq].main.where(knex.raw(e[1]+e[4]+e[2]));
           });
 
           //group by su tutti i campi proiettati tranne quelli aggregato
@@ -359,12 +421,13 @@ class Meta2SQL {
 
           console.log("## tabMapping    :",tabMapping);
           console.log("## fieldMapping  :",fieldMapping);
+          console.log("## varMapping    :",varMapping);
           console.log("## gb            :",gb,fields2gb);
           console.log("## hwc           :",hwc)
           console.log("## scw           :",scw)
 
           //stampo la query
-          console.log("\n["+nq+"] ", vq[nq].main.toString() + "\n" );
+          console.log("\nQ["+nq+"] ", vq[nq].main.toString() + "\n" );
 
         })
 
